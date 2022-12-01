@@ -6,6 +6,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 #include <string.h>
+#include <ros/package.h>
 
 int main(int argc, char** argv)
 {
@@ -18,9 +19,14 @@ int main(int argc, char** argv)
   nh.param<bool>("/show_original", show_original, "True");
   
   // choose video with rosparam
-  std::string material, path;
+  // std::string material, path;
+  // nh.param<std::string>("/material", material, "Plastic");
+  // path = "/home/pedrosr/pm/src/pm_proj1/videos/video" + material + ".mp4";
+
+  std::string material;
+  std::string path = ros::package::getPath("pm_proj1");
   nh.param<std::string>("/material", material, "Plastic");
-  path = "/home/pedrosr/pm/src/pm_proj1/videos/video" + material + ".mp4";
+  path = path +  "/videos/video" + material + ".mp4";
 
   // Open video
   cv::VideoCapture cap(path);
