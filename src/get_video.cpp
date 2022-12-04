@@ -37,6 +37,8 @@ int main(int argc, char** argv)
     return -1;
   }
 
+  int n_frame = 0;
+
   cv::Mat frame;
   int fps = 30;
   ros::Rate rate = fps;
@@ -55,6 +57,8 @@ int main(int argc, char** argv)
 
   while(cap.isOpened())
   {
+    n_frame ++;
+
     // Capture next frame
     cap >> frame;
 
@@ -75,6 +79,9 @@ int main(int argc, char** argv)
     {
       float scale_down = 0.5;
       cv::Mat original_small;
+      
+      //std::string text = "frame: " + std::to_string(n_frame);
+      //cv::putText(frame, text, cv::Point2d(50, 500),cv::FONT_HERSHEY_DUPLEX, 1.0, CV_RGB(0, 0, 255), 2);
       cv::resize(frame,original_small, cv::Size(),scale_down,scale_down, cv::INTER_LINEAR);
       cv::imshow("Frame", original_small );
       // Press Space Bar to continue, ESC to exit

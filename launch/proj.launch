@@ -10,7 +10,7 @@
         <node pkg="pm_proj1" name="segment" type="segment" output="screen"/>
         <node pkg="pm_proj1" name="kalman" type="kalman" output="screen" />
         <node pkg="pm_proj1" name="display" type="display" output="screen" />
-        <node pkg="pm_proj1" name="get_video" type="get_video" output="screen" launch-prefix="bash -c 'sleep 1; $0 $@' "/>
+        <node pkg="pm_proj1" name="get_video" type="get_video" output="screen" launch-prefix="bash -c 'sleep 3; $0 $@' "/>
         
         <!-- Parametros -->
         <param name="/material" value="$(arg material)" />
