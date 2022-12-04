@@ -6,11 +6,14 @@
 #include <opencv2/videoio.hpp>
 #include <opencv2/imgcodecs.hpp>
 
+#include <numeric>
+
 #include <ros/ros.h>
 #include <sensor_msgs/Image.h>
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 #include <geometry_msgs/Point.h>
+#include <std_msgs/Float32.h>
 
 #include "pm_proj1/seg_params.h"
 
@@ -18,12 +21,14 @@ int H_MIN, H_MAX, S_MIN, S_MAX, V_MIN, V_MAX;
 int H_MIN_old, H_MAX_old, S_MIN_old, S_MAX_old, V_MIN_old, V_MAX_old; 
 int kernel_size;
 std::string debug_raw;
-ros::Publisher pub;
+ros::Publisher pub, area_pub;
 bool debug;
 cv::Mat img, mask,mask_small,hsv, contours, ccomps, contours_small, ccomps_small;
 float scale_down = 0.5;
 bool checked_params = false;
 int frame_n = 0;
+int detected_frames = 0;
+std::vector <float> area;
 
 void eval_debug ()
 {
@@ -32,7 +37,6 @@ void eval_debug ()
     else
         debug = false;
 }
-
 
 bool param_update()
 {
@@ -95,6 +99,12 @@ void update_image_cont()
     cv::erode(img,contours,kernel);
 
     cv::Moments m = cv::moments(contours, true);
+
+    area.push_back(m.m00);
+    std_msgs::Float32 area_msg;
+    area_msg.data = std::accumulate(area.begin(), area.end(), 0 ) / area.size();
+    area_pub.publish(area_msg);
+
     cv::Point p(m.m10/m.m00, m.m01/m.m00);
     cv::circle(contours, p, 5, cv::Scalar(0,0,255), -1);
 
@@ -113,6 +123,9 @@ void update_image_cont()
     pt_msg.z = frame_n;
 
     pub.publish(pt_msg);
+
+    //float temp_area = cv::contourArea(contours, false);
+    //ROS_WARN("area %f", temp_area); 
 }
 
 void update_image_ccomp()
@@ -161,7 +174,6 @@ void update_image_ccomp()
         cv::resize(ccomps,ccomps_small, cv::Size(),scale_down,scale_down, cv::INTER_LINEAR);    
         cv::imshow("Labeled map", ccomps_small);
     }
-    //cv::waitKey(1);
 }
 
 void callback (const sensor_msgs::ImageConstPtr& cam_msg)
@@ -196,6 +208,7 @@ int main(int argc, char** argv)
   
     ros::Subscriber sub, sub_params;
     pub = nh.advertise<geometry_msgs::Point>("/point", 1);
+    area_pub = nh.advertise<std_msgs::Float32>("/area", 1);
 
     nh.param<int>("/H_MIN", H_MIN, 0);
     nh.param<int>("/H_MAX", H_MAX, 255);
