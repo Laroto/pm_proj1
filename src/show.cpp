@@ -18,15 +18,23 @@ bool got_track = false;
 bool got_detec = false;
 int n_frame = 0;
 int track_x=-999, track_y, detect_x=-999, detect_y;
+int old_y=0, vel_y=0, old_vel_y=0 , old_vel_y2;
+bool hit = false;
 
 void track_cb (const geometry_msgs::PointConstPtr& msg)
 {
+    old_y = track_y;
+
     track_x = msg->x;
     track_y = msg->y;
 
     got_track = true;
 
     n_frame = msg->z;
+    
+    old_vel_y2 = old_vel_y;
+    old_vel_y = vel_y;
+    vel_y = track_y - old_y;
 
     //ROS_WARN("got track point %d", msg->z);
 }
@@ -91,6 +99,20 @@ int main(int argc, char** argv)
             cv::Point2d pt_detect(detect_x,detect_y);
             cv::circle(img, pt_track, 5, cv::Vec3b(0,255,0),2);
             cv::circle(img, pt_detect, 5, cv::Vec3b(255,0,0),2);
+
+            if ( ( old_vel_y2 < 0 && vel_y >= 0) || (old_vel_y2 >= 0 && vel_y < 0) ) // se muda de sinal
+            {
+                hit = true;
+            }
+
+            //ROS_WARN("\n\nold_vel_y %d\nvel_y %d\nld_vel_y2 %d", old_vel_y, vel_y, old_vel_y2);
+
+            if (hit)
+            {
+                cv::putText(img, "Colision!",cv::Point(450, 40), cv::FONT_HERSHEY_DUPLEX, 1.0, CV_RGB(255, 0, 0), 1);
+                ROS_WARN("Colision!");
+                
+            }
 
             cv::putText(img, "Detect",cv::Point(pt_detect.x + 10, pt_detect.y), cv::FONT_HERSHEY_DUPLEX, 1.0, CV_RGB(0, 0, 255), 1);
             cv::putText(img, "Track",cv::Point(pt_track.x + 10, pt_track.y -50), cv::FONT_HERSHEY_DUPLEX, 1.0, CV_RGB(0, 255, 0), 1);

@@ -5,7 +5,6 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/videoio.hpp>
 #include <opencv2/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
 
 #include <numeric>
 
@@ -95,13 +94,15 @@ void update_image_cont()
 {
     cv::inRange(hsv, cv::Scalar(H_MIN, S_MIN, V_MIN), cv::Scalar(H_MAX, S_MAX, V_MAX), mask);
 
+    cv::blur(hsv,hsv, cv::Size(11,11));
+
     cv::Mat kernel = cv::Mat::ones(kernel_size,kernel_size, CV_8U);
     cv::dilate(mask, img, kernel);
     cv::erode(img,contours,kernel);
 
-    //novo
     cv::Mat canny_output;
-    cv::Canny( contours, canny_output, 0.1, 0.5, 3 );
+    float thresh = 1.5;
+    cv::Canny( contours, canny_output, thresh, thresh*2, 3 );
     std::vector<std::vector<cv::Point> > cont;
     cv::findContours( canny_output, cont, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE );    
 
@@ -117,11 +118,6 @@ void update_image_cont()
         mc[i] = cv::Point2f( static_cast<float>(mu[i].m10 / (mu[i].m00 + 1e-5)),
                          static_cast<float>(mu[i].m01 / (mu[i].m00 + 1e-5)) );
     }
-
-    area.push_back(mu[0].m00);
-    std_msgs::Float32 area_msg;
-    area_msg.data = std::accumulate(area.begin(), area.end(), 0 ) / area.size();
-    area_pub.publish(area_msg);
 
     if (debug)
     {
@@ -142,17 +138,21 @@ void update_image_cont()
         }
         cv::resize(drawing,drawing_small, cv::Size(),scale_down,scale_down, cv::INTER_LINEAR);
         cv::imshow( "Contours", drawing_small );
-        //
     }
 
+    cv::Moments m = cv::moments(contours, true);
+    cv::Point p(m.m10/m.m00, m.m01/m.m00);
+    area.push_back(m.m00);
+    std_msgs::Float32 area_msg;
+    area_msg.data = std::accumulate(area.begin(), area.end(), 0 ) / area.size();
+    area_pub.publish(area_msg);
+    
     geometry_msgs::Point pt_msg;
-    pt_msg.x = mc[0].x;
-    pt_msg.y = mc[0].y;
+    pt_msg.x = p.x;
+    pt_msg.y = p.y;
     pt_msg.z = frame_n;
-
     pub.publish(pt_msg);
 }
-
 
 void callback (const sensor_msgs::ImageConstPtr& cam_msg)
 {
@@ -210,13 +210,13 @@ int main(int argc, char** argv)
         {
             if (debug)
             {
-                ROS_INFO("\n\nUsing these parameters:");
-                ROS_INFO("\nH_MIN: %d",H_MIN);
-                ROS_INFO("\nH_MAX: %d",H_MAX);
-                ROS_INFO("\nS_MIN: %d",S_MIN);
-                ROS_INFO("\nS_MAX: %d",S_MAX);
-                ROS_INFO("\nV_MIN: %d",V_MIN);
-                ROS_INFO("\nV_MAX: %d",V_MAX);
+                // ROS_INFO("\n\nUsing these parameters:");
+                // ROS_INFO("\nH_MIN: %d",H_MIN);
+                // ROS_INFO("\nH_MAX: %d",H_MAX);
+                // ROS_INFO("\nS_MIN: %d",S_MIN);
+                // ROS_INFO("\nS_MAX: %d",S_MAX);
+                // ROS_INFO("\nV_MIN: %d",V_MIN);
+                // ROS_INFO("\nV_MAX: %d",V_MAX);
             }
 
             if (param_update())

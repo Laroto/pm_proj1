@@ -22,7 +22,7 @@
             <param name="/show_original" value="True" />
         </group>
 
-        <param name="/kernel_size" value="33" />
+        <param name="/kernel_size" value="19" />
         
         <rosparam file="$(find pm_proj1)/cfg/hsv_params_$(arg material).yaml" />
 

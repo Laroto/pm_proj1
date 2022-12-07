@@ -128,10 +128,8 @@ int main(int argc, char** argv)
                 meas.at<float>(1) = (float)pt.y;
                 if (! ((pt_old.x <= 0) || (pt_old.y <= 0)) ) //ambos forem validos / existem
                 {
-                    kf.transitionMatrix.at<float>(2) = ((float)pt.x - (float)pt_old.x);;
-                    kf.transitionMatrix.at<float>(3) = ((float)pt.y - (float)pt_old.y);
-                    //meas.at<float>(2) = ((float)pt.x - (float)pt_old.x);
-                    //meas.at<float>(3) = ((float)pt.y - (float)pt_old.y); 
+                    meas.at<float>(2) = ((float)pt.x - (float)pt_old.x);
+                    meas.at<float>(3) = ((float)pt.y - (float)pt_old.y); 
                     //ROS_WARN("atualizou velocidade MEDIDA x: %f passada: %f",((float)pt.x - (float)pt_old.x)/dT, meas.at<float>(2));
                 }
                 
@@ -169,7 +167,9 @@ int main(int argc, char** argv)
             msg.y = (int)center.y;
             msg.z = frame_n;
 
-            //ROS_WARN("velocidade x y: %f %f", state.at<float>(2),state.at<float>(3));
+            // ROS_WARN("\n\nstate x y: %f %f", state.at<float>(0),state.at<float>(1));
+            // ROS_WARN("observado x y: %f %f", meas.at<float>(0), meas.at<float>(1));
+            // ROS_WARN("velocidade x y: %f %f", state.at<float>(2),state.at<float>(3));
 
             pub.publish(msg);
             //ROS_INFO("\n\n Detected: %f %f\n Tracked: %d %d", pt.x, pt.y, (int)center.x,(int)center.y);
