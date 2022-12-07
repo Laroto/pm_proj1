@@ -128,8 +128,10 @@ int main(int argc, char** argv)
                 meas.at<float>(1) = (float)pt.y;
                 if (! ((pt_old.x <= 0) || (pt_old.y <= 0)) ) //ambos forem validos / existem
                 {
-                    meas.at<float>(2) = ((float)pt.x - (float)pt_old.x);
-                    meas.at<float>(3) = ((float)pt.y - (float)pt_old.y); 
+                    kf.transitionMatrix.at<float>(2) = ((float)pt.x - (float)pt_old.x);;
+                    kf.transitionMatrix.at<float>(3) = ((float)pt.y - (float)pt_old.y);
+                    //meas.at<float>(2) = ((float)pt.x - (float)pt_old.x);
+                    //meas.at<float>(3) = ((float)pt.y - (float)pt_old.y); 
                     //ROS_WARN("atualizou velocidade MEDIDA x: %f passada: %f",((float)pt.x - (float)pt_old.x)/dT, meas.at<float>(2));
                 }
                 
