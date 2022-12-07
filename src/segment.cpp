@@ -23,7 +23,7 @@ int kernel_size;
 std::string debug_raw;
 ros::Publisher pub, area_pub;
 bool debug;
-cv::Mat img, mask,mask_small,hsv, contours, ccomps, contours_small, ccomps_small;
+cv::Mat img, mask,mask_small,hsv, contours, ccomps, contours_small, original;
 float scale_down = 0.5;
 bool checked_params = false;
 int frame_n = 0;
@@ -92,20 +92,27 @@ void update_params (const pm_proj1::seg_paramsConstPtr msg)
 
 void update_image_cont()
 {
-    cv::inRange(hsv, cv::Scalar(H_MIN, S_MIN, V_MIN), cv::Scalar(H_MAX, S_MAX, V_MAX), mask);
+    cv::Mat blur;
+    cv::GaussianBlur(original, blur, cv::Size(11, 11), 3.0, 3.0);
+    cv::Mat hsv_img;
+    cv::inRange(blur, cv::Scalar(H_MIN, S_MIN, V_MIN), cv::Scalar(H_MAX, S_MAX, V_MAX), hsv_img);
+    cv::dilate(hsv_img, hsv_img, cv::Mat(), cv::Point(-1, -1), 5);
+    cv::erode(hsv_img,contours,cv::Mat(), cv::Point(-1, -1), 5);
 
-    cv::blur(hsv,hsv, cv::Size(11,11));
+    //
+    // cv::inRange(hsv, cv::Scalar(H_MIN, S_MIN, V_MIN), cv::Scalar(H_MAX, S_MAX, V_MAX), mask);
 
-    cv::Mat kernel = cv::Mat::ones(kernel_size,kernel_size, CV_8U);
-    cv::dilate(mask, img, kernel);
-    cv::erode(img,contours,kernel);
+    // cv::blur(hsv,hsv, cv::Size(11,11));
+
+    // cv::Mat kernel = cv::Mat::ones(kernel_size,kernel_size, CV_8U);
+    // cv::dilate(mask, img, kernel);
+    // cv::erode(img,contours,kernel);
 
     cv::Mat canny_output;
     float thresh = 1.5;
     cv::Canny( contours, canny_output, thresh, thresh*2, 3 );
     std::vector<std::vector<cv::Point> > cont;
     cv::findContours( canny_output, cont, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE );    
-
     std::vector<cv::Moments> mu(cont.size() );
     for( size_t i = 0; i < cont.size(); i++ )
     {
@@ -118,11 +125,25 @@ void update_image_cont()
         mc[i] = cv::Point2f( static_cast<float>(mu[i].m10 / (mu[i].m00 + 1e-5)),
                          static_cast<float>(mu[i].m01 / (mu[i].m00 + 1e-5)) );
     }
+    if (cont.size()>0)
+    {
+        area.push_back(mu[0].m00);
+
+        std_msgs::Float32 area_msg;
+        area_msg.data = std::accumulate(area.begin(), area.end(), 0 ) / area.size();
+        area_pub.publish(area_msg);
+        
+        geometry_msgs::Point pt_msg;
+        pt_msg.x = mc[0].x;
+        pt_msg.y = mc[0].y;
+        pt_msg.z = frame_n;
+        pub.publish(pt_msg);
+    }
 
     if (debug)
     {
-        cv::resize(mask,mask_small, cv::Size(),scale_down,scale_down, cv::INTER_LINEAR);
-        cv::imshow("Mask", mask_small);
+        // cv::resize(mask,mask_small, cv::Size(),scale_down,scale_down, cv::INTER_LINEAR);
+        // cv::imshow("Mask", mask_small);
 
         cv::resize(contours,contours_small, cv::Size(),scale_down,scale_down, cv::INTER_LINEAR);
         cv::imshow("Close Filter", contours_small);
@@ -136,22 +157,26 @@ void update_image_cont()
             cv::drawContours( drawing, cont, (int)i, color, 2 );
             cv::circle( drawing, mc[i], 4, color, -1 );
         }
-        cv::resize(drawing,drawing_small, cv::Size(),scale_down,scale_down, cv::INTER_LINEAR);
-        cv::imshow( "Contours", drawing_small );
+        if (cont.size()>0)
+        {
+            cv::resize(drawing,drawing_small, cv::Size(),scale_down,scale_down, cv::INTER_LINEAR);
+            cv::imshow( "Contours", drawing_small );
+        }
     }
 
-    cv::Moments m = cv::moments(contours, true);
-    cv::Point p(m.m10/m.m00, m.m01/m.m00);
-    area.push_back(m.m00);
-    std_msgs::Float32 area_msg;
-    area_msg.data = std::accumulate(area.begin(), area.end(), 0 ) / area.size();
-    area_pub.publish(area_msg);
+    // cv::Moments m = cv::moments(contours, true);
+    // cv::Point p(m.m10/m.m00, m.m01/m.m00);
+    // area.push_back(m.m00);
+
+    // std_msgs::Float32 area_msg;
+    // area_msg.data = std::accumulate(area.begin(), area.end(), 0 ) / area.size();
+    // area_pub.publish(area_msg);
     
-    geometry_msgs::Point pt_msg;
-    pt_msg.x = p.x;
-    pt_msg.y = p.y;
-    pt_msg.z = frame_n;
-    pub.publish(pt_msg);
+    // geometry_msgs::Point pt_msg;
+    // pt_msg.x = p.x;
+    // pt_msg.y = p.y;
+    // pt_msg.z = frame_n;
+    // pub.publish(pt_msg);
 }
 
 void callback (const sensor_msgs::ImageConstPtr& cam_msg)
@@ -171,6 +196,7 @@ void callback (const sensor_msgs::ImageConstPtr& cam_msg)
         return;
     }
 
+    original = cam->image;
     cv::cvtColor(cam->image,hsv, cv::COLOR_RGB2HSV);
     
     frame_n++;

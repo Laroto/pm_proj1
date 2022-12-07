@@ -100,7 +100,7 @@ int main(int argc, char** argv)
             cv::circle(img, pt_track, 5, cv::Vec3b(0,255,0),2);
             cv::circle(img, pt_detect, 5, cv::Vec3b(255,0,0),2);
 
-            if ( ( old_vel_y2 < 0 && vel_y >= 0) || (old_vel_y2 >= 0 && vel_y < 0) ) // se muda de sinal
+            if ( ( ( old_vel_y2 < 0 && vel_y >= 0) || (old_vel_y2 >= 0 && vel_y < 0) ) && (n_frame > 80)) // se muda de sinal
             {
                 hit = true;
             }
