@@ -5,6 +5,7 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/videoio.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include <numeric>
 
@@ -98,15 +99,29 @@ void update_image_cont()
     cv::dilate(mask, img, kernel);
     cv::erode(img,contours,kernel);
 
-    cv::Moments m = cv::moments(contours, true);
+    //novo
+    cv::Mat canny_output;
+    cv::Canny( contours, canny_output, 0.1, 0.5, 3 );
+    std::vector<std::vector<cv::Point> > cont;
+    cv::findContours( canny_output, cont, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE );    
 
-    area.push_back(m.m00);
+    std::vector<cv::Moments> mu(cont.size() );
+    for( size_t i = 0; i < cont.size(); i++ )
+    {
+        mu[i] = moments( cont[i] );
+    }
+    std::vector<cv::Point2f> mc( cont.size() );
+    for( size_t i = 0; i < cont.size(); i++ )
+    {
+        //add 1e-5 to avoid division by zero
+        mc[i] = cv::Point2f( static_cast<float>(mu[i].m10 / (mu[i].m00 + 1e-5)),
+                         static_cast<float>(mu[i].m01 / (mu[i].m00 + 1e-5)) );
+    }
+
+    area.push_back(mu[0].m00);
     std_msgs::Float32 area_msg;
     area_msg.data = std::accumulate(area.begin(), area.end(), 0 ) / area.size();
     area_pub.publish(area_msg);
-
-    cv::Point p(m.m10/m.m00, m.m01/m.m00);
-    cv::circle(contours, p, 5, cv::Scalar(0,0,255), -1);
 
     if (debug)
     {
@@ -114,67 +129,30 @@ void update_image_cont()
         cv::imshow("Mask", mask_small);
 
         cv::resize(contours,contours_small, cv::Size(),scale_down,scale_down, cv::INTER_LINEAR);
-        cv::imshow("contours", contours_small);
+        cv::imshow("Close Filter", contours_small);
+
+        // novo
+        cv::Mat drawing_small;
+        cv::Mat drawing = cv::Mat::zeros( canny_output.size(), CV_8UC3 );
+        for( size_t i = 0; i< cont.size(); i++ )
+        {
+            cv::Scalar color = cv::Scalar(0, 255, 0 );
+            cv::drawContours( drawing, cont, (int)i, color, 2 );
+            cv::circle( drawing, mc[i], 4, color, -1 );
+        }
+        cv::resize(drawing,drawing_small, cv::Size(),scale_down,scale_down, cv::INTER_LINEAR);
+        cv::imshow( "Contours", drawing_small );
+        //
     }
 
     geometry_msgs::Point pt_msg;
-    pt_msg.x = p.x;
-    pt_msg.y = p.y;
+    pt_msg.x = mc[0].x;
+    pt_msg.y = mc[0].y;
     pt_msg.z = frame_n;
 
     pub.publish(pt_msg);
-
-    //float temp_area = cv::contourArea(contours, false);
-    //ROS_WARN("area %f", temp_area); 
 }
 
-void update_image_ccomp()
-{
-    cv::inRange(hsv, cv::Scalar(H_MIN, S_MIN, V_MIN), cv::Scalar(H_MAX, S_MAX, V_MAX), mask);
-
-    cv::Mat kernel = cv::Mat::ones(kernel_size,kernel_size, CV_8U);
-    cv::dilate(mask, img, kernel);
-    cv::erode(img,img,kernel);
-
-    cv::Mat labels, centroids,stats, img_color;
-    int i, nccomps = cv::connectedComponentsWithStats(img,labels,stats,centroids, 8);
-
-    std::vector<cv::Vec3b> colors(nccomps+1);
-    colors[0] = cv::Vec3b(0,0,0); // background pixels remain black.
-    for( i = 1; i <= nccomps; i++ ) 
-    {
-        colors[i] = cv::Vec3b(rand()%256, rand()%256, rand()%256);
-        if( stats.at<int>(i-1, cv::CC_STAT_AREA) < 100 )
-        colors[i] = cv::Vec3b(0,0,0); // small regions are painted with black too.
-    }
-    ccomps = cv::Mat::zeros(img.size(), CV_8UC3);
-    for( int y = 0; y < img_color.rows; y++ )
-    for( int x = 0; x < img_color.cols; x++ )
-    {
-    int label = labels.at<int>(y, x);
-    CV_Assert(0 <= label && label <= nccomps);
-    ccomps.at<cv::Vec3b>(y, x) = colors[label];
-    }
-    
-    cv::Vec3b color = (0,0,0);
-    
-    for (int i=0; i<nccomps; i++)
-    {
-        double x = centroids.at<double>(i, 0);
-        double y = centroids.at<double>(i, 1);
-        cv::Point2d pt(x,y);
-        
-        cv::circle(ccomps,pt,20,color[1]);
-    }
-
-    if (debug)
-    {
-        // cv::resize(mask,mask_small, cv::Size(),scale_down,scale_down, cv::INTER_LINEAR);
-        // cv::imshow("Mask", mask_small);
-        cv::resize(ccomps,ccomps_small, cv::Size(),scale_down,scale_down, cv::INTER_LINEAR);    
-        cv::imshow("Labeled map", ccomps_small);
-    }
-}
 
 void callback (const sensor_msgs::ImageConstPtr& cam_msg)
 {
