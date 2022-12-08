@@ -85,34 +85,30 @@ int main(int argc, char** argv)
 
     while (ros::ok)
     {
-        //if (img.channels() == 3)
         if (got_img && got_detec && got_track)
         {
             got_img = false;
             got_track = false;
             got_detec = false;
 
-            //ROS_WARN("displaying");
-            //std::string text = "frame: " + std::to_string(n_frame);
-            //cv::putText(img, text, cv::Point2d(500, 50),cv::FONT_HERSHEY_DUPLEX, 1.0, CV_RGB(0, 0, 255), 2);
             cv::Point2d pt_track(track_x,track_y);
             cv::Point2d pt_detect(detect_x,detect_y);
             cv::circle(img, pt_track, 5, cv::Vec3b(0,255,0),2);
             cv::circle(img, pt_detect, 5, cv::Vec3b(255,0,0),2);
 
-            if ( ( ( old_vel_y2 < 0 && vel_y >= 0) || (old_vel_y2 >= 0 && vel_y < 0) ) && (n_frame > 80)) // se muda de sinal
+            if ( ( old_vel_y2 < 0 && (vel_y >= 0 || old_vel_y2 >=0)) || (old_vel_y2 > 0 && (vel_y <= 0 || old_vel_y <=0)  ) && (n_frame > 5)) // se muda de sinal
             {
                 hit = true;
             }
 
             //ROS_WARN("\n\nold_vel_y %d\nvel_y %d\nld_vel_y2 %d", old_vel_y, vel_y, old_vel_y2);
 
-            if (hit)
-            {
-                cv::putText(img, "Colision!",cv::Point(450, 40), cv::FONT_HERSHEY_DUPLEX, 1.0, CV_RGB(255, 0, 0), 1);
-                ROS_WARN("Colision!");
+            // if (hit)
+            // {
+            //     cv::putText(img, "Colision!",cv::Point(450, 40), cv::FONT_HERSHEY_DUPLEX, 1.0, CV_RGB(255, 0, 0), 1);
+            //     ROS_WARN("Colision!");
                 
-            }
+            // }
 
             cv::putText(img, "Detect",cv::Point(pt_detect.x + 10, pt_detect.y), cv::FONT_HERSHEY_DUPLEX, 1.0, CV_RGB(0, 0, 255), 1);
             cv::putText(img, "Track",cv::Point(pt_track.x + 10, pt_track.y -50), cv::FONT_HERSHEY_DUPLEX, 1.0, CV_RGB(0, 255, 0), 1);
@@ -120,15 +116,15 @@ int main(int argc, char** argv)
             cv::Mat small;
             float scale_down = 0.5;
             cv::resize(img,small, cv::Size(),scale_down,scale_down, cv::INTER_LINEAR);
-
             cv::imshow("final", small); 
+
             cv::waitKey(5);          
         }  
         
         ros::spinOnce();
     }
 
-    cv::destroyAllWindows();
+    //cv::destroyAllWindows();
     cv::waitKey(1);
 
     return 0;
